@@ -1,0 +1,14 @@
+.tag-list {
+  display: inline-block;
+  list-style: none;
+  text-align: left;
+  text-decoration: unerline;
+}
+
+.tag-list > li {
+  text-decoration: underline;
+}
+
+.tag-list > li:hover {
+  cursor: pointer;
+}
