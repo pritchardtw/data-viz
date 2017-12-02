@@ -1,8 +1,5 @@
 import * as React from 'react';
 import { Tag, DataPoint } from './types/api_types';
-import DatePicker from 'react-datepicker';
-import 'react-datepicker/dist/react-datepicker.css';
-import * as moment from 'moment';
 import './DataViewer.css';
 
 interface DataViewerProps {
@@ -11,8 +8,8 @@ interface DataViewerProps {
 
 interface DataViewerState {
   tagData: Array<DataPoint>;
-  startTime: any; // moment type
-  endTime: any; // moment type TODO: figure out moment type
+  startTime: Date;
+  endTime: Date;
 }
 
 interface DataViewer {
@@ -25,16 +22,18 @@ class DataViewer extends React.Component<DataViewerProps, DataViewerState> {
     this.updateStartDate = this.updateStartDate.bind(this);
     this.updateEndDate = this.updateEndDate.bind(this);
     this.tag = null;
+    let startTime = new Date();
+    startTime.setDate(startTime.getDate() - 2);
     this.state = {
       tagData: [],
-      startTime: moment().add(-2, 'days'),
-      endTime: moment()
+      endTime: new Date(),
+      startTime
     };
   }
 
   updateTagData(tag: Tag) {
-    const startTS = this.getDateString(this.state.startTime);
-    const endTS = this.getDateString(this.state.endTime);
+    const startTS = this.getApiDateString(this.state.startTime);
+    const endTS = this.getApiDateString(this.state.endTime);
     fetch(`http://cs-mock-timeseries-api.azurewebsites.net/api/DataPoint/${tag.tagId}?startTS=${startTS}&endTS=${endTS}`)
     .then(response => {
       response.json()
@@ -44,17 +43,34 @@ class DataViewer extends React.Component<DataViewerProps, DataViewerState> {
     });
   }
 
-  getDateString(date: any) {
-    return `${date.year()}/${date.month() + 1}/${date.date()}`;
+  getApiDateString(date: Date) {
+    return `${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()}`;
   }
 
-  updateStartDate(date: any, e: any) {
+  getDateInputString(date: Date) {
+    const formattedDate = ('0' + date.getDate()).slice(-2);
+    const formattedMonth = ('0' + (date.getMonth() + 1)).slice(-2);
+    const formattedYear = date.getFullYear();
+    return `${formattedYear}-${formattedMonth}-${formattedDate}`;
+  }
+
+  updateStartDate(e: React.ChangeEvent<HTMLInputElement>) {
+    const dateString = e.target.value.split('-');
+    const dateArray = dateString.map(string => {
+      return parseInt(string);
+    });
+    const date = new Date(dateArray[0], dateArray[1] - 1, dateArray[2]);
     this.setState({startTime: date}, () => {
       this.updateTagData(this.tag);
     });
   }
 
-  updateEndDate(date: any, e: any) {
+  updateEndDate(e: React.ChangeEvent<HTMLInputElement>) {
+    const dateString = e.target.value.split('-');
+    const dateArray = dateString.map(string => {
+      return parseInt(string);
+    });
+    const date = new Date(dateArray[0], dateArray[1] - 1, dateArray[2]);
     this.setState({endTime: date}, () => {
       this.updateTagData(this.tag);
     });
@@ -82,29 +98,27 @@ class DataViewer extends React.Component<DataViewerProps, DataViewerState> {
   }
 
   render() {
+    const { startTime, endTime } = this.state;
+    const startDate = this.getDateInputString(startTime);
+    const endDate = this.getDateInputString(endTime);
+
     return(
       <div className="data-viewer">
         <div className="date-picker">
           <div className="end-date">
             <p>End Date</p>
-            <DatePicker
-              selected={this.state.endTime}
+            <input
+              type="date"
+              defaultValue={endDate}
               onChange={this.updateEndDate}
-              peekNextMonth={true}
-              showMonthDropdown={true}
-              showYearDropdown={true}
-              dropdownMode="select"
             />
           </div>
           <div className="start-date">
             <p>Start Date</p>
-            <DatePicker
-              selected={this.state.startTime}
+            <input
+              type="date"
+              defaultValue={startDate}
               onChange={this.updateStartDate}
-              peekNextMonth={true}
-              showMonthDropdown={true}
-              showYearDropdown={true}
-              dropdownMode="select"
             />
           </div>
         </div>
