@@ -1,6 +1,5 @@
 import * as React from 'react';
 import { Tag, DataPoint } from './types/api_types';
-import * as Chart from 'chart.js';
 import './DataViewer.css';
 
 interface DataViewerProps {
@@ -9,8 +8,6 @@ interface DataViewerProps {
 
 interface DataViewerState {
   tagData: Array<DataPoint>;
-  xaxis: Array<any>;
-  yaxis: Array<any>;
   startTime: Date;
   endTime: Date;
 }
@@ -25,12 +22,12 @@ class DataViewer extends React.Component<DataViewerProps, DataViewerState> {
     this.updateStartDate = this.updateStartDate.bind(this);
     this.updateEndDate = this.updateEndDate.bind(this);
     this.tag = null;
+    let startTime = new Date();
+    startTime.setDate(startTime.getDate() - 2);
     this.state = {
       tagData: [],
-      xaxis: [],
-      yaxis: [],
-      endTime: new Date(2017, 10, 30),
-      startTime: new Date(2017, 10, 28)
+      endTime: new Date(),
+      startTime
     };
   }
 
@@ -41,15 +38,7 @@ class DataViewer extends React.Component<DataViewerProps, DataViewerState> {
     .then(response => {
       response.json()
       .then(data => {
-        const xaxis = data.map((datapoint: DataPoint) => {
-          return datapoint.observationTS;
-        });
-        const yaxis = data.map((datapoint: DataPoint) => {
-          return datapoint.value;
-        });
-        this.setState({tagData: data, xaxis, yaxis}, () => {
-          this.forceUpdate();
-        });
+        this.setState({tagData: data});
       });
     });
   }
@@ -67,22 +56,22 @@ class DataViewer extends React.Component<DataViewerProps, DataViewerState> {
 
   updateStartDate(e: React.ChangeEvent<HTMLInputElement>) {
     const dateString = e.target.value.split('-');
-    const dateArray = dateString.map(date => {
-      return parseInt(date, 10);
+    const dateArray = dateString.map(string => {
+      return parseInt(string);
     });
-    const newDate = new Date(dateArray[0], dateArray[1] - 1, dateArray[2]);
-    this.setState({startTime: newDate}, () => {
+    const date = new Date(dateArray[0], dateArray[1] - 1, dateArray[2]);
+    this.setState({startTime: date}, () => {
       this.updateTagData(this.tag);
     });
   }
 
   updateEndDate(e: React.ChangeEvent<HTMLInputElement>) {
     const dateString = e.target.value.split('-');
-    const dateArray = dateString.map(date => {
-      return parseInt(date, 10);
+    const dateArray = dateString.map(string => {
+      return parseInt(string);
     });
-    const newDate = new Date(dateArray[0], dateArray[1] - 1, dateArray[2]);
-    this.setState({endTime: newDate}, () => {
+    const date = new Date(dateArray[0], dateArray[1] - 1, dateArray[2]);
+    this.setState({endTime: date}, () => {
       this.updateTagData(this.tag);
     });
   }
@@ -97,47 +86,15 @@ class DataViewer extends React.Component<DataViewerProps, DataViewerState> {
     this.updateTagData(nextProps.tag);
   }
 
-  componentDidUpdate() {
-    let reversedXaxis = Array.from(this.state.xaxis);
-    reversedXaxis.reverse();
-    let reversedYaxis = Array.from(this.state.yaxis);
-    reversedYaxis.reverse();
-    let canvas = document.getElementById('graph') as HTMLCanvasElement;
-    let parentDiv = canvas.parentNode as HTMLDivElement;
-    parentDiv.removeChild(canvas);
-    let newCanvas = document.createElement('canvas');
-    newCanvas.width = 400;
-    newCanvas.height = 400;
-    newCanvas.id = 'graph';
-    parentDiv.appendChild(newCanvas);
-    const ctx = newCanvas.getContext('2d');
-    new Chart(ctx, {
-    type: 'line',
-    data: {
-        labels: reversedXaxis,
-        datasets: [{
-            label: this.props.tag.label,
-            data: reversedYaxis,
-            backgroundColor: [
-                'rgba(255, 99, 132, 0.2)',
-            ],
-            borderColor: [
-                'rgba(255,99,132,1)',
-            ],
-            borderWidth: 1
-        }]
-    },
-    options: {
-        responsive: false,
-        scales: {
-            yAxes: [{
-                ticks: {
-                }
-            }]
-        }
-    }
-});
-  return '';
+  renderTagData() {
+    return this.state.tagData.map((datapoint, index) => {
+      return (
+        <tr key={index}>
+          <td>{datapoint.observationTS}</td>
+          <td>{datapoint.value.toString()}</td>
+        </tr>
+      );
+    });
   }
 
   render() {
@@ -153,8 +110,6 @@ class DataViewer extends React.Component<DataViewerProps, DataViewerState> {
             <input
               type="date"
               defaultValue={endDate}
-              max="2017-11-30"
-              min="2017-10-15"
               onChange={this.updateEndDate}
             />
           </div>
@@ -163,14 +118,25 @@ class DataViewer extends React.Component<DataViewerProps, DataViewerState> {
             <input
               type="date"
               defaultValue={startDate}
-              max="2017-11-30"
-              min="2017-10-15"
               onChange={this.updateStartDate}
             />
           </div>
         </div>
         <div className="data-display">
-          <canvas id="graph" width="400" height="400"/>
+          <h2>{this.props.tag.label}</h2>
+          <div className="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>Time Stamp</th>
+                  <th>{this.props.tag.unit}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {this.renderTagData()}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     );
