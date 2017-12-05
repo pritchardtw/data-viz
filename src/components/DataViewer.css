@@ -11,3 +11,10 @@
 .data-display > canvas {
   display: inline-block !important;
 }
+
+.table-wrapper {
+  height: 40vh;
+  max-height: 600px;
+  overflow: auto;
+  overflow-y: scroll;
+}

@@ -1,7 +1,8 @@
 import * as React from 'react';
 import { Tag, DataPoint } from './types/api_types';
-import * as Chart from 'chart.js';
+import { Line } from 'react-chartjs-2';
 import './DataViewer.css';
+/*import { decimate } from '../data_utils/data_utils';*/
 
 interface DataViewerProps {
   tag: Tag;
@@ -9,10 +10,11 @@ interface DataViewerProps {
 
 interface DataViewerState {
   tagData: Array<DataPoint>;
-  xaxis: Array<any>;
-  yaxis: Array<any>;
+  time: Array<any>;
+  data: Array<any>;
   startTime: Date;
   endTime: Date;
+  loading: boolean;
 }
 
 interface DataViewer {
@@ -24,31 +26,35 @@ class DataViewer extends React.Component<DataViewerProps, DataViewerState> {
     super(props);
     this.updateStartDate = this.updateStartDate.bind(this);
     this.updateEndDate = this.updateEndDate.bind(this);
+    this.getData = this.getData.bind(this);
+    this.getOptions = this.getOptions.bind(this);
     this.tag = null;
     this.state = {
       tagData: [],
-      xaxis: [],
-      yaxis: [],
+      time: [],
+      data: [],
       endTime: new Date(2017, 10, 30),
-      startTime: new Date(2017, 10, 28)
+      startTime: new Date(2017, 10, 28),
+      loading: true
     };
   }
 
   updateTagData(tag: Tag) {
     const startTS = this.getApiDateString(this.state.startTime);
     const endTS = this.getApiDateString(this.state.endTime);
-    fetch(`http://cs-mock-timeseries-api.azurewebsites.net/api/DataPoint/${tag.tagId}?startTS=${startTS}&endTS=${endTS}`)
-    .then(response => {
-      response.json()
-      .then(data => {
-        const xaxis = data.map((datapoint: DataPoint) => {
-          return datapoint.observationTS;
-        });
-        const yaxis = data.map((datapoint: DataPoint) => {
-          return datapoint.value;
-        });
-        this.setState({tagData: data, xaxis, yaxis}, () => {
-          this.forceUpdate();
+    this.setState({loading: true}, () => {
+      fetch(`http://cs-mock-timeseries-api.azurewebsites.net/api/DataPoint/${tag.tagId}?startTS=${startTS}&endTS=${endTS}`)
+      .then(response => {
+        response.json()
+        .then(data => {
+          const [values, timestamps] = data.reduce(([vs, ts]: Array<Array<any>>, datapoint: DataPoint) => {
+                                                      vs.push(datapoint.value);
+                                                      ts.push(datapoint.observationTS);
+                                                      return [vs, ts];
+                                                   },
+                                                   [[], []]);
+          /*data = decimate(data, 60);*/
+          this.setState({tagData: data, time: timestamps, data: values, loading: false});
         });
       });
     });
@@ -97,53 +103,107 @@ class DataViewer extends React.Component<DataViewerProps, DataViewerState> {
     this.updateTagData(nextProps.tag);
   }
 
-  componentDidUpdate() {
-    let reversedXaxis = Array.from(this.state.xaxis);
-    reversedXaxis.reverse();
-    let reversedYaxis = Array.from(this.state.yaxis);
-    reversedYaxis.reverse();
-    let canvas = document.getElementById('graph') as HTMLCanvasElement;
-    let parentDiv = canvas.parentNode as HTMLDivElement;
-    parentDiv.removeChild(canvas);
-    let newCanvas = document.createElement('canvas');
-    newCanvas.width = 400;
-    newCanvas.height = 400;
-    newCanvas.id = 'graph';
-    parentDiv.appendChild(newCanvas);
-    const ctx = newCanvas.getContext('2d');
-    new Chart(ctx, {
-    type: 'line',
-    data: {
-        labels: reversedXaxis,
-        datasets: [{
-            label: this.props.tag.label,
-            data: reversedYaxis,
-            backgroundColor: [
-                'rgba(255, 99, 132, 0.2)',
-            ],
-            borderColor: [
-                'rgba(255,99,132,1)',
-            ],
-            borderWidth: 1
-        }]
-    },
-    options: {
-        responsive: false,
+  getData() {
+    let dataReversed = Array.from(this.state.data);
+    dataReversed = dataReversed.reverse();
+    let timeReversed = Array.from(this.state.time);
+    timeReversed = timeReversed.reverse();
+
+    const dataSet = {
+      labels: timeReversed,
+      datasets: [
+        {
+          label: this.props.tag.label,
+          fill: false,
+          lineTension: 0.1,
+          backgroundColor: 'rgba(75,192,192,0.4)',
+          borderColor: 'rgba(75,192,192,1)',
+          borderCapStyle: 'butt',
+          borderDashOffset: 0.0,
+          borderJoinStyle: 'miter',
+          pointBorderColor: 'rgba(75,192,192,1)',
+          pointBackgroundColor: '#fff',
+          pointBorderWidth: 1,
+          pointHoverRadius: 5,
+          pointHoverBackgroundColor: 'rgba(75,192,192,1)',
+          pointHoverBorderColor: 'rgba(220,220,220,1)',
+          pointHoverBorderWidth: 2,
+          pointRadius: 1,
+          pointHitRadius: 10,
+          data: dataReversed
+        }
+      ]
+    };
+
+    return dataSet;
+  }
+
+  getOptions() {
+    return(
+      {
+        title: {
+          display: true,
+          text: this.props.tag.label
+        },
+        responsive: true,
         scales: {
             yAxes: [{
+                scaleLabel: {
+                  display: true,
+                  labelString: this.props.tag.unit
+                },
                 ticks: {
                 }
+            }],
+            xAxes: [{
+              scaleLabel: {
+                display: true,
+                labelString: 'Time'
+              }
             }]
         }
-    }
-});
-  return '';
+      }
+    );
+  }
+
+  renderRows() {
+    return this.state.tagData.map((datapoint: DataPoint, index) => {
+      return (
+        <tr key={index}>
+          <td>{datapoint.observationTS.toString()}</td>
+          <td>{datapoint.value.toString()}</td>
+        </tr>
+      );
+    });
+  }
+
+  renderTable() {
+    return (
+      <div className="table-wrapper">
+        <h2>{this.tag.label}</h2>
+        <table>
+          <thead>
+            <tr>
+              <td>Time</td>
+              <td>{this.tag.unit}</td>
+            </tr>
+          </thead>
+          <tbody>
+            {this.renderRows()}
+          </tbody>
+        </table>
+      </div>
+    );
   }
 
   render() {
-    const { startTime, endTime } = this.state;
+    const { startTime, endTime, loading } = this.state;
     const startDate = this.getDateInputString(startTime);
     const endDate = this.getDateInputString(endTime);
+    let graph = true;
+    if (this.tag.dataType === 'boolean' || this.tag.dataType === 'string') {
+      graph = false;
+    }
 
     return(
       <div className="data-viewer">
@@ -170,7 +230,9 @@ class DataViewer extends React.Component<DataViewerProps, DataViewerState> {
           </div>
         </div>
         <div className="data-display">
-          <canvas id="graph" width="400" height="400"/>
+          {graph && !loading && <Line data={this.getData} options={this.getOptions()} width={400} height={400} />}
+          {loading && <div>Loading...</div>}
+          {!graph && !loading && this.renderTable()}
         </div>
       </div>
     );

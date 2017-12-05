@@ -5,6 +5,7 @@
   "dependencies": {
     "chart.js": "^2.7.1",
     "react": "^16.1.1",
+    "react-chartjs-2": "^2.6.4",
     "react-dom": "^16.1.1",
     "react-router-dom": "^4.2.2",
     "react-scripts-ts": "2.8.0"

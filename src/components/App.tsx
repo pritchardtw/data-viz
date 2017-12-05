@@ -85,7 +85,7 @@ class App extends React.Component<AppProps, AppState> {
   render() {
     return(
       <div className="app">
-        <h1>Welcome to CleanSpark Data Viewer</h1>
+        <h1>Welcome to Data Viewer</h1>
         {this.features.length ? <Filter features={this.features} handleFilter={this.handleFilter} /> : null}
         {this.state.updatedTags.length ?
           <TagList
