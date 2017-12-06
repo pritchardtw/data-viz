@@ -1,19 +1,11 @@
 import * as React from 'react';
-import { RouteComponentProps } from 'react-router-dom';
 import { Tag } from './types/api_types';
 import TagList from './TagList';
 import Filter from './Filter';
 import DataViewer from './DataViewer';
 import './App.css';
 
-interface AppRouterProps {
-  match: object;
-  location: object;
-  history: object;
-}
-
-// Rendered by route.
-interface AppProps extends RouteComponentProps<AppRouterProps> {
+interface AppProps {
 }
 
 interface AppState {

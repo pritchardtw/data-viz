@@ -25,6 +25,6 @@
     "webpack",
     "jest",
     "src/setupTests.ts",
-    "src/components/DataViewer0.tsx"
+    "src/components/*.test.*"
   ]
 }
